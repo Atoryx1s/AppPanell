@@ -1,0 +1,44 @@
+{
+  "productName": "top-launcher",
+  "version": "0.1.0",
+  "identifier": "com.top.launcher.app",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "frontendDist": "../src"
+  },
+"app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Top Launcher",
+        "width": 600,
+        "height": 90,
+        "resizable": false,
+        "dragDropEnabled": true,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "center": false,
+        "visible": false,
+        "shadow": false,
+        "backgroundColor": "#00000000"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+},
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Hidden Top Panel</title>
+    <style>
+        :root {
+            --panel-height: 70px;
+            --bg-blur: rgba(20, 20, 20, 0.4);
+            --accent: rgba(255, 255, 255, 0.2);
+        }
+
+      html, body {
+            background: transparent !important;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
+        .wrapper {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            transform: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            white-space: nowrap;
+            background: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            z-index: 9999;
+        }
+
+        .add-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            font-size: 24px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.7);
+            flex-shrink: 0;
+        }
+
+        .add-btn:hover {
+            background: rgba(0, 255, 127, 0.2);
+            border-color: #00ff7f;
+            color: #00ff7f;
+        }
+        
+        .app-icon img {
+            pointer-events: none;
+            display: block;
+        }
+
+        .panel-row {
+            display: inline-flex;
+            align-items: center;
+            height: 70px;
+            padding: 0 16px;
+            border-radius: 22px;
+    
+            background: rgba(30, 30, 30, 0.905);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .top-bar {
+            background: none;
+            border: none;
+            box-shadow: none;
+            backdrop-filter: none;
+            padding: 0;
+            height: 100%;
+            max-width: 600px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none;
+}
+        .top-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .app-icon {
+            flex-shrink: 0;
+            font-size: 24px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .app-icon:hover {
+            background: var(--accent);
+            transform: translateY(3px);
+        }
+
+        .wrapper:not(.active) .trigger-tab {
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+
+        .wrapper:not(.active):hover .trigger-tab {
+            opacity: 1;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #appsContainer {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        #appsContainer:empty {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="wrapper" id="mainWrapper">
+    <div class="panel-row">
+        <div class="top-bar">
+            <div id="appsContainer"></div>
+        </div>
+        <div class="app-icon add-btn" onclick="addAppManual()" title="Додати програму">
+            <span>+</span>
+        </div>
+    </div>
+</div>
+
+    <script>
+const appsContainer = document.getElementById('appsContainer');
+const scrollContainer = document.querySelector(".top-bar");
+const wrapper = document.getElementById('mainWrapper');
+let hideTimeout;
+let isDown = false;
+let startX;
+let scrollLeft;
+
+function tauri() {
+    return window.__TAURI__;
+}
+
+async function addAppManual() {
+    try {
+        const selected = await tauri().dialog.open({
+            multiple: true,
+            title: "Оберіть програму (.exe або ярлик)",
+            filters: [{ name: 'Програми', extensions: ['exe', 'lnk', 'md'] }]
+        });
+
+        if (selected) {
+            const paths = Array.isArray(selected) ? selected : [selected];
+            for (const path of paths) await createIcon(path);
+            saveApps();
+        }
+    } catch (err) {
+        console.error("Діалог не відкрився:", err);
+    }
+}
+
+async function createIcon(path) {
+    const icon = document.createElement('div');
+    icon.className = 'app-icon';
+
+    const fileName = path.split('\\').pop().split('/').pop().replace('.exe', '');
+    icon.title = fileName;
+    icon.dataset.fullPath = path;
+    icon.innerHTML = `<div class="spinner"></div>`;
+
+    try {
+        const iconBase64 = await tauri().core.invoke('get_executable_icon', { path });
+        icon.innerHTML = iconBase64
+            ? `<img src="${iconBase64}" alt="${fileName}" style="width:32px;height:32px;object-fit:contain;">`
+            : `<span style="font-size:24px">🚀</span>`;
+    } catch (err) {
+        console.error("Помилка іконки:", err);
+        icon.innerHTML = `<span style="font-size:24px">🚀</span>`;
+    }
+
+    icon.onclick = () => tauri().core.invoke('launch_app', { path });
+
+    icon.oncontextmenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        icon.remove();
+        saveApps();
+    };
+
+    appsContainer.appendChild(icon);
+    await updateWindowSize();
+}
+
+async function updateWindowSize() {
+    await new Promise(r => setTimeout(r, 60));
+    const bar = document.querySelector('.panel-row');
+    const rect = bar.getBoundingClientRect();
+    await tauri().core.invoke('resize_and_center', {
+        width: Math.ceil(rect.width) + 20,
+        height: 90
+    });
+}
+
+function saveApps() {
+    const paths = Array.from(appsContainer.querySelectorAll('.app-icon'))
+        .map(el => el.dataset.fullPath);
+    localStorage.setItem('launcher-paths', JSON.stringify(paths));
+    updateWindowSize();
+}
+
+function loadApps() {
+    const saved = localStorage.getItem('launcher-paths');
+    if (saved) {
+        appsContainer.innerHTML = '';
+        JSON.parse(saved).forEach(path => createIcon(path));
+    }
+}
+
+// Drag & drop
+tauri().event.listen('tauri://drag-drop', (event) => {
+    if (event.payload?.paths) {
+        event.payload.paths.forEach(path => createIcon(path));
+        saveApps();
+    }
+});
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+scrollContainer.addEventListener('contextmenu', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await addAppManual();
+});
+
+scrollContainer.addEventListener("wheel", (evt) => {
+    if (Math.abs(evt.deltaX) > Math.abs(evt.deltaY)) {
+        return; 
+    }
+    evt.preventDefault();
+    scrollContainer.scrollLeft += evt.deltaY;
+});
+
+scrollContainer.addEventListener('mousedown', (e) => {
+    isDown = true;
+    startX = e.pageX - scrollContainer.offsetLeft;
+    scrollLeft = scrollContainer.scrollLeft;
+});
+scrollContainer.addEventListener('mouseleave', () => { isDown = false; });
+scrollContainer.addEventListener('mouseup', () => { isDown = false; });
+scrollContainer.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - scrollContainer.offsetLeft;
+    scrollContainer.scrollLeft = scrollLeft - (x - startX) * 2;
+});
+
+loadApps();
+</script>
+
+</body>
+</html>
