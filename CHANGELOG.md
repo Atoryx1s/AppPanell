@@ -8,3 +8,6 @@
 - Create a new release
 - Add Changelog
 - Create Readme
+
+# v1.1.1
+- Add author for installing process
