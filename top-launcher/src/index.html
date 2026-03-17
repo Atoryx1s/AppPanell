@@ -152,7 +152,7 @@
         <div class="top-bar">
             <div id="appsContainer"></div>
         </div>
-        <div class="app-icon add-btn" onclick="addAppManual()" title="Додати програму">
+        <div class="app-icon add-btn" onclick="addAppManual()" title="Add a program">
             <span>+</span>
         </div>
     </div>
@@ -175,7 +175,7 @@ async function addAppManual() {
     try {
         const selected = await tauri().dialog.open({
             multiple: true,
-            title: "Оберіть програму (.exe або ярлик)",
+            title: "Select the program (.exe, .lnk or shortcut)",
             filters: [{ name: 'Програми', extensions: ['exe', 'lnk', 'md'] }]
         });
 
@@ -185,7 +185,7 @@ async function addAppManual() {
             saveApps();
         }
     } catch (err) {
-        console.error("Діалог не відкрився:", err);
+        console.error("The dialog box did not open:", err);
     }
 }
 
@@ -204,7 +204,7 @@ async function createIcon(path) {
             ? `<img src="${iconBase64}" alt="${fileName}" style="width:32px;height:32px;object-fit:contain;">`
             : `<span style="font-size:24px">🚀</span>`;
     } catch (err) {
-        console.error("Помилка іконки:", err);
+        console.error("Icon error:", err);
         icon.innerHTML = `<span style="font-size:24px">🚀</span>`;
     }
 
@@ -229,6 +229,7 @@ async function updateWindowSize() {
         width: Math.ceil(rect.width) + 20,
         height: 90
     });
+    await tauri().core.invoke('show_window');
 }
 
 function saveApps() {
@@ -238,12 +239,16 @@ function saveApps() {
     updateWindowSize();
 }
 
-function loadApps() {
+async function loadApps() {
     const saved = localStorage.getItem('launcher-paths');
     if (saved) {
         appsContainer.innerHTML = '';
-        JSON.parse(saved).forEach(path => createIcon(path));
+        const paths = JSON.parse(saved);
+        for (const path of paths) {
+            await createIcon(path);
+        }
     }
+    await updateWindowSize();
 }
 
 // Drag & drop

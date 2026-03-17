@@ -1,4 +1,8 @@
-use tauri::Manager;
+use tauri::{
+    Manager,
+    tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState},
+    menu::{Menu, MenuItem},
+};
 use std::process::Command;
 use std::os::windows::process::CommandExt;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -45,7 +49,7 @@ fn get_executable_icon(path: String) -> Result<String, String> {
     };
 
     if h_success == 0 || shfi.hIcon.is_null() {
-        return Err("Не вдалося знайти іконку".to_string());
+        return Err("The icon could not be found".to_string());
     }
 
     let h_icon = shfi.hIcon;
@@ -109,7 +113,7 @@ fn get_executable_icon(path: String) -> Result<String, String> {
     };
 
     let img = image::RgbaImage::from_raw(width, height, rgba_buf)
-        .ok_or("Не вдалося створити RgbaImage")?;
+        .ok_or("Failed to create RgbaImage")?;
 
     let mut png_bytes: Vec<u8> = Vec::new();
     img.write_to(
@@ -119,6 +123,13 @@ fn get_executable_icon(path: String) -> Result<String, String> {
 
     let base64_string = general_purpose::STANDARD.encode(&png_bytes);
     Ok(format!("data:image/png;base64,{}", base64_string))
+}
+
+#[tauri::command]
+fn show_window(app: tauri::AppHandle) {
+    let window = app.get_webview_window("main").unwrap();
+    window.show().unwrap();
+    window.set_focus().unwrap();
 }
 
 #[tauri::command]
@@ -134,17 +145,57 @@ fn launch_app(path: String) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init()) 
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![launch_app, get_executable_icon, resize_and_center])
+        .invoke_handler(tauri::generate_handler![launch_app, get_executable_icon, resize_and_center, show_window])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
-            //Hot key
+
+            let quit = MenuItem::with_id(app, "quit", "Exit", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", "Show App Panell", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show, &quit])?;
+
+            let tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("Top Launcher")
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .build(app)?;
+
+            tray.on_tray_icon_event(|tray, event| {
+                if let TrayIconEvent::Click {
+                    button: MouseButton::Left,
+                    button_state: MouseButtonState::Up,
+                    ..
+                } = event {
+                    let app = tray.app_handle();
+                    let window = app.get_webview_window("main").unwrap();
+                    if window.is_visible().unwrap() {
+                        window.hide().unwrap();
+                    } else {
+                        window.show().unwrap();
+                        window.set_focus().unwrap();
+                    }
+                }
+            });
+
+            tray.on_menu_event(|app, event| {
+                match event.id.as_ref() {
+                    "quit" => app.exit(0),
+                    "show" => {
+                        let window = app.get_webview_window("main").unwrap();
+                        window.show().unwrap();
+                        window.set_focus().unwrap();
+                    }
+                _ => {}
+                }
+            });
+
             let ctrl_shift_space = Shortcut::new(
                 Some(Modifiers::CONTROL | Modifiers::SHIFT),
                 Code::Space,
             );
-
+            let _ = app.global_shortcut().unregister(ctrl_shift_space);
             app.global_shortcut().on_shortcut(ctrl_shift_space, move |app_handle, _shortcut, event| {
                 if let ShortcutState::Pressed = event.state() {
                     let window = app_handle.get_webview_window("main").unwrap();
@@ -155,7 +206,7 @@ pub fn run() {
                         window.set_focus().unwrap();
                     }
                 }
-            }).unwrap();
+            }).unwrap_or_else(|e| eprintln!("Hockey: {}", e));
 
             if let Ok(Some(monitor)) = window.current_monitor() {
                 let screen_size = monitor.size();
@@ -166,6 +217,13 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error")
+        .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
+                if code.is_none() {
+                    api.prevent_exit();
+                }
+            }
+        });
 }
