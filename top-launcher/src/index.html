@@ -193,19 +193,29 @@ async function createIcon(path) {
     const icon = document.createElement('div');
     icon.className = 'app-icon';
 
-    const fileName = path.split('\\').pop().split('/').pop().replace('.exe', '');
+    const fileName = path.split('\\').pop().split('/').pop().replace('.exe', '').replace('.lnk', '');
     icon.title = fileName;
     icon.dataset.fullPath = path;
     icon.innerHTML = `<div class="spinner"></div>`;
 
-    try {
-        const iconBase64 = await tauri().core.invoke('get_executable_icon', { path });
-        icon.innerHTML = iconBase64
-            ? `<img src="${iconBase64}" alt="${fileName}" style="width:32px;height:32px;object-fit:contain;">`
-            : `<span style="font-size:24px">🚀</span>`;
-    } catch (err) {
-        console.error("Icon error:", err);
-        icon.innerHTML = `<span style="font-size:24px">🚀</span>`;
+    const cacheKey = 'icon-cache:' + path;
+    const cached = localStorage.getItem(cacheKey);
+
+    if (cached) {
+        icon.innerHTML = `<img src="${cached}" alt="${fileName}" style="width:32px;height:32px;object-fit:contain;">`;
+    } else {
+        try {
+            const iconBase64 = await tauri().core.invoke('get_executable_icon', { path });
+            if (iconBase64) {
+                localStorage.setItem(cacheKey, iconBase64);
+                icon.innerHTML = `<img src="${iconBase64}" alt="${fileName}" style="width:32px;height:32px;object-fit:contain;">`;
+            } else {
+                icon.innerHTML = `<span style="font-size:24px">📦</span>`;
+            }
+        } catch (err) {
+            console.error("Icon error:", err);
+            icon.innerHTML = `<span style="font-size:24px">📦</span>`;
+        }
     }
 
     icon.onclick = () => tauri().core.invoke('launch_app', { path });
@@ -214,6 +224,7 @@ async function createIcon(path) {
         e.preventDefault();
         e.stopPropagation();
         icon.remove();
+        localStorage.removeItem(cacheKey);
         saveApps();
     };
 
