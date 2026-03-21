@@ -166,6 +166,7 @@ let hideTimeout;
 let isDown = false;
 let startX;
 let scrollLeft;
+let dialogOpen = false;
 
 function tauri() {
     return window.__TAURI__;
@@ -173,6 +174,7 @@ function tauri() {
 
 async function addAppManual() {
     try {
+        dialogOpen = true;
         const selected = await tauri().dialog.open({
             multiple: true,
             title: "Select the program (.exe, .lnk or shortcut)",
@@ -186,6 +188,8 @@ async function addAppManual() {
         }
     } catch (err) {
         console.error("The dialog box did not open:", err);
+    } finally {
+        setTimeout(() => { dialogOpen = false; }, 300);
     }
 }
 
@@ -260,6 +264,11 @@ async function loadApps() {
         }
     }
     await updateWindowSize();
+    window.addEventListener('blur', async () => {
+        if (!dialogOpen) {
+            await tauri().core.invoke('hide_window');
+        }
+    });
 }
 
 // Drag & drop

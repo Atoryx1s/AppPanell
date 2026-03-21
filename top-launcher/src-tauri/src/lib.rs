@@ -142,12 +142,18 @@ fn launch_app(path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn hide_window(app: tauri::AppHandle) {
+    let window = app.get_webview_window("main").unwrap();
+    window.hide().unwrap();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![launch_app, get_executable_icon, resize_and_center, show_window])
+        .invoke_handler(tauri::generate_handler![launch_app, get_executable_icon, resize_and_center, show_window, hide_window])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
 
