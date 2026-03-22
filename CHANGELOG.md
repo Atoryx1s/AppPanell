@@ -11,3 +11,9 @@
 
 # v1.1.1
 - Add author for installing process
+
+# v1.1.2
+- Fixing bug hide the application when clicked outside its boundaries
+
+# v.1.2.1
+- Add auto update method application
