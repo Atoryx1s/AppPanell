@@ -247,6 +247,25 @@ async function updateWindowSize() {
     await tauri().core.invoke('show_window');
 }
 
+async function checkForUpdates() {
+    try {
+        const updateInfo = await tauri().core.invoke('get_update_info');
+        
+        if (updateInfo) {
+            const confirmed = await tauri().dialog.confirm(
+                `A new version is available ${updateInfo.version}!\n\n${updateInfo.body}\n\nUpdate now?`,
+                { title: 'Top Launcher — Update', kind: 'info' }
+            );
+            
+            if (confirmed) {
+                await tauri().core.invoke('install_update');
+            }
+        }
+    } catch (err) {
+        console.error('Error checking for updates:', err);
+    }
+}
+
 function saveApps() {
     const paths = Array.from(appsContainer.querySelectorAll('.app-icon'))
         .map(el => el.dataset.fullPath);
