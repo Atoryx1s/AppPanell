@@ -46,15 +46,15 @@
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256"
-    },
-    "plugins": {
-      "updater": {
-        "endpoints": [
-            "https://github.com/Atoryx1s/AppPanell/releases/latest/download/latest.json"
-        ],
-        "dialog": false,
-        "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDExQTg4RjI1NDlEMTREQTUKUldTbFRkRkpKWStvRVVhTEw5RTZFcHZsWmJvRlN6OTg3aVBtZDd1MGF6WEhxZUE1SVFsNnpSWTEK"
-      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/ТВІ_ЮЗЕРНЕЙМ/ТВІ_РЕПО/releases/latest/download/latest.json"
+      ],
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDExQTg4RjI1NDlEMTREQTUKUldTbFRkRkpKWStvRVVhTEw5RTZFcHZsWmJvRlN6OTg3aVBtZDd1MGF6WEhxZUE1SVFsNnpSWTEK"
     }
   }
 }

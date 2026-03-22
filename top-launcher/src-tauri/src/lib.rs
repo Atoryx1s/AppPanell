@@ -193,6 +193,7 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .invoke_handler(tauri::generate_handler![launch_app, get_executable_icon, resize_and_center, show_window, hide_window, check_update, get_update_info, install_update])
         .setup(|app| {
