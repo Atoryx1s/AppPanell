@@ -189,13 +189,35 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn copy_shortcut(app: tauri::AppHandle, src_path: String) -> Result<String, String> {
+    let app_dir = app.path().app_data_dir()
+        .map_err(|e| e.to_string())?;
+    
+    let shortcuts_dir = app_dir.join("shortcuts");
+    std::fs::create_dir_all(&shortcuts_dir)
+        .map_err(|e| e.to_string())?;
+    
+    let file_name = std::path::Path::new(&src_path)
+        .file_name()
+        .ok_or("Invalid filename")?
+        .to_string_lossy()
+        .to_string();
+    
+    let dest_path = shortcuts_dir.join(&file_name);
+    std::fs::copy(&src_path, &dest_path)
+        .map_err(|e| e.to_string())?;
+    
+    Ok(dest_path.to_string_lossy().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![launch_app, get_executable_icon, resize_and_center, show_window, hide_window, check_update, get_update_info, install_update])
+        .invoke_handler(tauri::generate_handler![launch_app, get_executable_icon, resize_and_center, show_window, hide_window, check_update, get_update_info, install_update, copy_shortcut])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
 
