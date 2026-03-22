@@ -263,7 +263,7 @@ async function checkForUpdates() {
         
         if (updateInfo) {
             const confirmed = await tauri().dialog.confirm(
-                `A new version is available ${updateInfo.version}!\n\n${updateInfo.body}\n\nUpdate now?`,
+                `New version ${updateInfo.version} is available!\n\n${updateInfo.body}\n\nUpdate now?`,
                 { title: 'Top Launcher — Update', kind: 'info' }
             );
             
@@ -272,7 +272,7 @@ async function checkForUpdates() {
             }
         }
     } catch (err) {
-        console.error('Error checking for updates:', err);
+        console.error('Update check error:', err);
     }
 }
 
@@ -339,6 +339,7 @@ scrollContainer.addEventListener('mousemove', (e) => {
 });
 
 loadApps();
+setTimeout(checkForUpdates, 3000);
 </script>
 
 </body>

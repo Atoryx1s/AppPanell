@@ -17,3 +17,9 @@
 
 # v.1.2.1
 - Add auto update method application
+
+# v1.2.2
+- Add GitHub Actions
+
+# v1.2.3
+- Fix update app method
