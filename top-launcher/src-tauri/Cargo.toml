@@ -3,7 +3,7 @@ name = "top-launcher"
 version = "1.2.1"
 description = "App Panel Launcher"
 authors = ["Atoryx"]
-edition = "2026"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
