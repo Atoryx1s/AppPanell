@@ -1,9 +1,9 @@
 [package]
 name = "top-launcher"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-edition = "2021"
+version = "1.2.1"
+description = "App Panel Launcher"
+authors = ["Atoryx"]
+edition = "2026"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
