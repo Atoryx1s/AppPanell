@@ -114,7 +114,7 @@
 
         .wrapper:not(.active):hover .trigger-tab {
             opacity: 1;
-        }
+        }   
 
         .spinner {
             width: 20px;
@@ -141,6 +141,11 @@
 
         #appsContainer:empty {
             display: none;
+        }
+
+        .panel-row, .top-bar, .app-icon, #appsContainer {
+            user-select: none;
+            -webkit-user-select: none;
         }
 
     </style>

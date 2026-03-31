@@ -23,3 +23,6 @@
 
 # v1.2.3
 - Fix update app method
+
+# v1.2.4
+- Fixed an issue with the highlighting of shortcuts in the middle of the panel 
