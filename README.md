@@ -12,5 +12,5 @@ A stylish hidden panel for Windows with an Acrylic/Glass design.
 
 ## How to Install
 1. Go to the [Releases](https://github.com/Atoryx1s/AppPanell/releases/latest).
-2. Download the `AppPanell_1.2.10_x64_en-US.msi` or `AppPanell_1.2.10_x64-setup.exe` file.
+2. Download the `AppPanell_1.2.11_x64_en-US.msi` or `AppPanell_1.2.11_x64-setup.exe` file.
 3. Install and run it.

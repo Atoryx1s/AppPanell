@@ -26,6 +26,17 @@ jobs:
         run: npm install
         working-directory: top-launcher
 
+      - name: Check Signer Key
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "Key is empty! Please check GitHub secrets."
+          else
+            echo "Key found, length: ${#TAURI_SIGNING_PRIVATE_KEY}"
+          fi
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
         env:
@@ -42,3 +53,4 @@ jobs:
           updaterJsonPreferNsis: true
           updaterJsonKeepUniversal: false
           includeUpdaterJson: true
+          args: --verbose
