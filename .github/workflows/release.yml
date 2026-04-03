@@ -26,23 +26,25 @@ jobs:
         run: npm install
         working-directory: top-launcher
 
-      - name: Decode signing key
+      - name: Decode signing key to file
         shell: pwsh
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          KEY_BASE64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           $decoded = [System.Text.Encoding]::UTF8.GetString(
-            [System.Convert]::FromBase64String($env:TAURI_SIGNING_PRIVATE_KEY)
+            [System.Convert]::FromBase64String($env:KEY_BASE64)
           )
-          echo "DECODED_KEY<<EOF" >> $env:GITHUB_ENV
-          echo $decoded >> $env:GITHUB_ENV
-          echo "EOF" >> $env:GITHUB_ENV
+          $keyPath = "$env:RUNNER_TEMP\signing.key"
+          [System.IO.File]::WriteAllText($keyPath, $decoded)
+          Write-Host "Key written to: $keyPath"
+          Write-Host "Contains untrusted: $($decoded.Contains('untrusted'))"
+          echo "KEY_PATH=$keyPath" >> $env:GITHUB_ENV
 
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ env.DECODED_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ env.KEY_PATH }}
         with:
           projectPath: top-launcher
           tagName: ${{ github.ref_name }}
@@ -52,3 +54,18 @@ jobs:
           prerelease: false
           updaterJsonPreferNsis: true
           includeUpdaterJson: true
+          
+      - name: Check if sig files exist
+        shell: pwsh
+        run: |
+          $bundlePath = "top-launcher\src-tauri\target\release\bundle\nsis"
+          Write-Host "Files in NSIS bundle dir:"
+          Get-ChildItem $bundlePath | ForEach-Object { Write-Host $_.Name }
+          
+          $sigFile = Get-ChildItem $bundlePath -Filter "*.sig" -ErrorAction SilentlyContinue
+          if ($sigFile) {
+            Write-Host "SIG FILES FOUND:"
+            $sigFile | ForEach-Object { Write-Host $_.FullName }
+          } else {
+            Write-Host "NO SIG FILES FOUND - signing is not working"
+          }
