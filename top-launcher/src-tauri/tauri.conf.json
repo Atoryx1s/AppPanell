@@ -1,6 +1,6 @@
 {
   "productName": "AppPanell",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "identifier": "com.top.launcher.app",
   "build": {
     "beforeDevCommand": "",
@@ -50,6 +50,7 @@
   },
   "plugins": {
     "updater": {
+      "active": true,
       "endpoints": [
         "https://github.com/Atoryx1s/AppPanell/releases/latest/download/latest.json"
       ],

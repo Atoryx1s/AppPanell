@@ -32,3 +32,6 @@
 
 # v1.2.6
 - Fix bug secret variables
+
+# v1.2.7
+- Fixing bugs

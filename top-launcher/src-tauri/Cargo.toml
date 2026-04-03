@@ -1,6 +1,6 @@
 [package]
 name = "top-launcher"
-version = "1.2.5"
+version = "1.2.7"
 description = "App Panel Launcher"
 authors = ["Atoryx"]
 edition = "2021"
