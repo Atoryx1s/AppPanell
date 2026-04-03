@@ -34,16 +34,15 @@ jobs:
           $decoded = [System.Text.Encoding]::UTF8.GetString(
             [System.Convert]::FromBase64String($env:TAURI_SIGNING_PRIVATE_KEY)
           )
-          $decoded | Out-File -FilePath "signing.key" -Encoding utf8 -NoNewline
-          Write-Host "Decoded key length: $($decoded.Length)"
-          Write-Host "Contains untrusted: $($decoded.Contains('untrusted'))"
+          echo "DECODED_KEY<<EOF" >> $env:GITHUB_ENV
+          echo $decoded >> $env:GITHUB_ENV
+          echo "EOF" >> $env:GITHUB_ENV
 
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ env.DECODED_KEY }}
         with:
           projectPath: top-launcher
           tagName: ${{ github.ref_name }}
@@ -51,3 +50,5 @@ jobs:
           releaseBody: 'See changelog for details'
           releaseDraft: false
           prerelease: false
+          updaterJsonPreferNsis: true
+          includeUpdaterJson: true
