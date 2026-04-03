@@ -29,3 +29,6 @@
 
 # v1.2.5
 - Fix update json to release and add button notification
+
+# v1.2.6
+- Fix bug secret variables
