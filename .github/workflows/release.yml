@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -25,17 +25,6 @@ jobs:
       - name: Install dependencies
         run: npm install
         working-directory: top-launcher
-
-      - name: Check Signer Key
-        run: |
-          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-            echo "Key is empty! Please check GitHub secrets."
-          else
-            echo "Key found, length: ${#TAURI_SIGNING_PRIVATE_KEY}"
-          fi
-        shell: bash
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
 
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
@@ -49,7 +38,33 @@ jobs:
           releaseBody: 'See changelog for details'
           releaseDraft: false
           prerelease: false
-          updaterJsonPreferNsis: true
-          updaterJsonKeepUniversal: false
-          includeUpdaterJson: true
-          args: --verbose
+
+      - name: Create and upload latest.json
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          
+          NSIS_SIG=$(cat "top-launcher/src-tauri/target/release/bundle/nsis/AppPanell_${VERSION}_x64-setup.exe.sig")
+          
+          cat > latest.json << EOF
+          {
+            "version": "${VERSION}",
+            "notes": "See changelog for details",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "windows-x86_64": {
+                "url": "https://github.com/Atoryx1s/AppPanell/releases/download/v${VERSION}/AppPanell_${VERSION}_x64-setup.nsis.zip",
+                "signature": "${NSIS_SIG}"
+              }
+            }
+          }
+          EOF
+          
+          gh release upload "v${VERSION}" latest.json --clobber
+          gh release upload "v${VERSION}" \
+            "top-launcher/src-tauri/target/release/bundle/nsis/AppPanell_${VERSION}_x64-setup.nsis.zip" \
+            --clobber

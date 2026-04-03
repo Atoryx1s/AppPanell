@@ -28,5 +28,3 @@ node_modules
 src-tauri/gen/
 src-tauri/binaries/
 .env
-mykey.key
-mykey.key.pub
