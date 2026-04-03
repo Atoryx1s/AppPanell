@@ -26,6 +26,17 @@ jobs:
         run: npm install
         working-directory: top-launcher
 
+      - name: Debug signing
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          $key = $env:TAURI_SIGNING_PRIVATE_KEY
+          Write-Host "Key length: $($key.Length)"
+          Write-Host "First 50 chars: $($key.Substring(0, [Math]::Min(50, $key.Length)))"
+          Write-Host "Contains newline: $($key.Contains("`n"))"
+          Write-Host "Contains 'untrusted': $($key.Contains('untrusted'))"
+
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
         env:
