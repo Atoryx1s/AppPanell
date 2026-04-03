@@ -40,31 +40,41 @@ jobs:
           prerelease: false
 
       - name: Create and upload latest.json
-        shell: bash
+        shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
+          $VERSION = "${{ github.ref_name }}" -replace '^v', ''
           
-          NSIS_SIG=$(cat "top-launcher/src-tauri/target/release/bundle/nsis/AppPanell_${VERSION}_x64-setup.exe.sig")
+          $SIG_PATH = "top-launcher\src-tauri\target\release\bundle\nsis\AppPanell_${VERSION}_x64-setup.exe.sig"
+          $ZIP_PATH = "top-launcher\src-tauri\target\release\bundle\nsis\AppPanell_${VERSION}_x64-setup.nsis.zip"
           
-          cat > latest.json << EOF
-          {
-            "version": "${VERSION}",
-            "notes": "See changelog for details",
-            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "platforms": {
-              "windows-x86_64": {
-                "url": "https://github.com/Atoryx1s/AppPanell/releases/download/v${VERSION}/AppPanell_${VERSION}_x64-setup.nsis.zip",
-                "signature": "${NSIS_SIG}"
+          Write-Host "Looking for sig at: $SIG_PATH"
+          
+          if (-not (Test-Path $SIG_PATH)) {
+            Write-Error "Signature file not found: $SIG_PATH"
+            exit 1
+          }
+          
+          $NSIS_SIG = Get-Content $SIG_PATH -Raw
+          $DATE = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+          
+          $JSON = @{
+            version = $VERSION
+            notes = "See changelog for details"
+            pub_date = $DATE
+            platforms = @{
+              "windows-x86_64" = @{
+                url = "https://github.com/Atoryx1s/AppPanell/releases/download/v${VERSION}/AppPanell_${VERSION}_x64-setup.nsis.zip"
+                signature = $NSIS_SIG.Trim()
               }
             }
-          }
-          EOF
+          } | ConvertTo-Json -Depth 5
           
-          gh release upload "v${VERSION}" latest.json --clobber
-          gh release upload "v${VERSION}" \
-            "top-launcher/src-tauri/target/release/bundle/nsis/AppPanell_${VERSION}_x64-setup.nsis.zip" \
-            --clobber
+          $JSON | Out-File -FilePath "latest.json" -Encoding utf8
+          
+          Write-Host "Generated latest.json:"
+          Get-Content "latest.json"
+          
+          gh release upload "v${VERSION}" "latest.json" --clobber
+          gh release upload "v${VERSION}" "$ZIP_PATH" --clobber
