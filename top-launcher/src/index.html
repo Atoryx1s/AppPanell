@@ -124,6 +124,28 @@
             border-top-color: #fff;
             animation: spin 1s ease-in-out infinite;
         }
+
+        .update-btn {
+            background: rgba(0, 200, 100, 0.15);
+            border: 1px solid rgba(0, 255, 127, 0.5);
+            color: #00ff7f;
+            font-size: 20px;
+            font-weight: bold;
+            flex-shrink: 0;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .update-btn:hover {
+            background: rgba(0, 255, 127, 0.3);
+            border-color: #00ff7f;
+            transform: translateY(3px);
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 255, 127, 0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(0, 255, 127, 0); }
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -153,14 +175,19 @@
 <body>
 
     <div class="wrapper" id="mainWrapper">
-    <div class="panel-row">
-        <div class="top-bar">
-            <div id="appsContainer"></div>
-        </div>
-        <div class="app-icon add-btn" onclick="addAppManual()" title="Add a program">
-            <span>+</span>
+        <div class="panel-row">
+            <div class="top-bar">
+                <div id="appsContainer"></div>
+            </div>
+            <div class="app-icon add-btn" onclick="addAppManual()" title="Add a program">
+                <span>+</span>
+            </div>
         </div>
     </div>
+    <div class="app-icon update-btn" id="updateBtn" onclick="doUpdate()" title="Update available!" style="display:none;">
+        <span>🔔</span>
+    </div>
+</div>
 </div>
 
     <script>
@@ -172,6 +199,7 @@ let isDown = false;
 let startX;
 let scrollLeft;
 let dialogOpen = false;
+let pendingUpdate = null;
 
 function tauri() {
     return window.__TAURI__;
@@ -265,19 +293,32 @@ async function updateWindowSize() {
 async function checkForUpdates() {
     try {
         const updateInfo = await tauri().core.invoke('get_update_info');
-        
         if (updateInfo) {
-            const confirmed = await tauri().dialog.confirm(
-                `New version ${updateInfo.version} is available!\n\n${updateInfo.body}\n\nUpdate now?`,
-                { title: 'Top Launcher — Update', kind: 'info' }
-            );
-            
-            if (confirmed) {
-                await tauri().core.invoke('install_update');
-            }
+            pendingUpdate = updateInfo;
+            const btn = document.getElementById('updateBtn');
+            btn.title = `Update to ${updateInfo.version}`;
+            btn.style.display = 'flex';
+            await updateWindowSize();
         }
     } catch (err) {
         console.error('Update check error:', err);
+    }
+}
+
+async function doUpdate() {
+    if (!pendingUpdate) return;
+
+    const confirmed = await tauri().dialog.confirm(
+        `New version ${pendingUpdate.version} is available!\n\n${pendingUpdate.body || 'Bug fixes and improvements'}\n\nUpdate now?`,
+        { title: 'Top Launcher — Update', kind: 'info' }
+    );
+
+    if (confirmed) {
+        const btn = document.getElementById('updateBtn');
+        btn.innerHTML = `<div class="spinner"></div>`;
+        btn.onclick = null;
+
+        await tauri().core.invoke('install_update');
     }
 }
 

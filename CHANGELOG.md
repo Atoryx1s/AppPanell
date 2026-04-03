@@ -26,3 +26,6 @@
 
 # v1.2.4
 - Fixed an issue with the highlighting of shortcuts in the middle of the panel 
+
+# v1.2.5
+- Fix update json to release and add button notification

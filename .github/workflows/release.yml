@@ -34,3 +34,5 @@ jobs:
           releaseBody: 'See changelog for details'
           releaseDraft: false
           prerelease: false
+          updaterJsonPreferNsis: true
+          updaterJsonKeepUniversal: false
