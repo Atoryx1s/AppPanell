@@ -49,13 +49,13 @@ jobs:
           $EXE = "$BUNDLE\AppPanell_${VERSION}_x64-setup.exe"
           $ZIP = "$BUNDLE\AppPanell_${VERSION}_x64-setup.nsis.zip"
 
-          $keyPath = "$env:RUNNER_TEMP\signing.key"
-          [System.IO.File]::WriteAllText($keyPath, $KEY_BASE64)
+          $KEY = $env:KEY_BASE64
+          Write-Host "Key length: $($KEY.Length)"
 
           Compress-Archive -Path $EXE -DestinationPath $ZIP -Force
 
-          npx tauri signer sign -k $KEY_BASE64 -p "" $EXE
-          npx tauri signer sign -k $KEY_BASE64 -p "" $ZIP
+          npx tauri signer sign -k $KEY -p "" $EXE
+          npx tauri signer sign -k $KEY -p "" $ZIP
 
           $SIG = Get-Content "$ZIP.sig" -Raw
 
