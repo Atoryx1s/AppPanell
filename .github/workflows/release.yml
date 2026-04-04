@@ -55,3 +55,4 @@ jobs:
           } else {
             Write-Host "NO SIG FILES FOUND - signing is not working"
           }
+            
