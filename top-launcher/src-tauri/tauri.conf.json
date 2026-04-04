@@ -1,6 +1,6 @@
 {
   "productName": "AppPanell",
-  "version": "1.2.22",
+  "version": "1.2.23",
   "identifier": "com.top.launcher.app",
   "build": {
     "beforeDevCommand": "",
