@@ -26,25 +26,11 @@ jobs:
         run: npm install
         working-directory: top-launcher
 
-      - name: Decode signing key to file
-        shell: pwsh
-        env:
-          KEY_BASE64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        run: |
-          $decoded = [System.Text.Encoding]::UTF8.GetString(
-            [System.Convert]::FromBase64String($env:KEY_BASE64)
-          )
-          $keyPath = "$env:RUNNER_TEMP\signing.key"
-          [System.IO.File]::WriteAllText($keyPath, $decoded)
-          Write-Host "Key written to: $keyPath"
-          Write-Host "Contains untrusted: $($decoded.Contains('untrusted'))"
-          echo "KEY_PATH=$keyPath" >> $env:GITHUB_ENV
-
-      - name: Build Tauri App
+       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ env.KEY_PATH }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           projectPath: top-launcher
           tagName: ${{ github.ref_name }}
