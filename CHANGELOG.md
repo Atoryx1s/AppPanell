@@ -30,11 +30,13 @@
 # v1.2.5
 - Fix update json to release and add button notification
 
-# v1.2.6
-- Fix bug secret variables
+# Internal Infrastructure Update (v1.2.6 - v1.2.24)
 
-# v1.2.7
-- Fixing bugs
+* *`Fixed`*: Issues with automated application signing in GitHub Actions.
 
-# v1.2.17
-- Fixing...
+* *`Added`*: Automatic generation of `latest.json` for the built-in updater.
+
+* *`Note`*: These versions were used for internal CI/CD testing.
+
+# v1.2.25
+- Fixed bug and Upgrade app
