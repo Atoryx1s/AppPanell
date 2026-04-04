@@ -40,3 +40,6 @@
 
 # v1.2.25
 - Fixed bug and Upgrade app
+
+# v1.2.26
+- Fix UI update button
