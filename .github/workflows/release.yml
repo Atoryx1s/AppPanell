@@ -30,8 +30,6 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: top-launcher
           tagName: ${{ github.ref_name }}
@@ -39,20 +37,43 @@ jobs:
           releaseBody: 'See changelog for details'
           releaseDraft: false
           prerelease: false
-          updaterJsonPreferNsis: true
-          includeUpdaterJson: true
-          
-      - name: Check if sig files exist
+
+      - name: Sign and upload updater files
         shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEY_BASE64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          $bundlePath = "top-launcher\src-tauri\target\release\bundle\nsis"
-          Write-Host "Files in NSIS bundle dir:"
-          Get-ChildItem $bundlePath | ForEach-Object { Write-Host $_.Name }
-          
-          $sigFile = Get-ChildItem $bundlePath -Filter "*.sig" -ErrorAction SilentlyContinue
-          if ($sigFile) {
-            Write-Host "SIG FILES FOUND:"
-            $sigFile | ForEach-Object { Write-Host $_.FullName }
-          } else {
-            Write-Host "NO SIG FILES FOUND - signing is not working"
-          }
+          $VERSION = "${{ github.ref_name }}" -replace '^v', ''
+          $BUNDLE = "top-launcher\src-tauri\target\release\bundle\nsis"
+          $EXE = "$BUNDLE\AppPanell_${VERSION}_x64-setup.exe"
+          $ZIP = "$BUNDLE\AppPanell_${VERSION}_x64-setup.nsis.zip"
+
+          $keyPath = "$env:RUNNER_TEMP\signing.key"
+          [System.IO.File]::WriteAllText($keyPath, $KEY_BASE64)
+
+          Compress-Archive -Path $EXE -DestinationPath $ZIP -Force
+
+          npx tauri signer sign -k $KEY_BASE64 -p "" $EXE
+          npx tauri signer sign -k $KEY_BASE64 -p "" $ZIP
+
+          $SIG = Get-Content "$ZIP.sig" -Raw
+
+          $DATE = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+          $JSON = @{
+            version = $VERSION
+            notes = "See changelog for details"
+            pub_date = $DATE
+            platforms = @{
+              "windows-x86_64" = @{
+                url = "https://github.com/Atoryx1s/AppPanell/releases/download/v${VERSION}/AppPanell_${VERSION}_x64-setup.nsis.zip"
+                signature = $SIG.Trim()
+              }
+            }
+          } | ConvertTo-Json -Depth 5
+
+          $JSON | Out-File -FilePath "latest.json" -Encoding utf8
+
+          gh release upload "v${VERSION}" "latest.json" --clobber
+          gh release upload "v${VERSION}" $ZIP --clobber
+          gh release upload "v${VERSION}" "$ZIP.sig" --clobber

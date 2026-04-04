@@ -1,6 +1,6 @@
 {
   "productName": "AppPanell",
-  "version": "1.2.20",
+  "version": "1.2.21",
   "identifier": "com.top.launcher.app",
   "build": {
     "beforeDevCommand": "",
@@ -54,7 +54,7 @@
       "endpoints": [
         "https://github.com/Atoryx1s/AppPanell/releases/latest/download/latest.json"
       ],
-      "pubkey": "RWRjwquwOMBVfN2H+ECjY8izotKx+yp3t+6PGwZmBlo5p3LAttjPbbTm"
+      "pubkey": "RWQu4VLXQFUTgdWQNb7OOmx9VflafL2bga16FDhHEAWRo0xE3LFqqa0m"
     }
   }
 }
