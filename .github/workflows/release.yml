@@ -50,21 +50,17 @@ jobs:
           $ZIP = "$BUNDLE\AppPanell_${VERSION}_x64-setup.nsis.zip"
           $KEY = $env:KEY_BASE64
 
-          Write-Host "Key length: $($KEY.Length)"
-          Write-Host "EXE exists: $(Test-Path $EXE)"
-
           Compress-Archive -Path $EXE -DestinationPath $ZIP -Force
 
           Set-Location "top-launcher"
-          cargo tauri signer sign -k $KEY -p "" "..\$EXE"
-          cargo tauri signer sign -k $KEY -p "" "..\$ZIP"
+          npm exec -- tauri signer sign -k $KEY -p "" "..\$EXE"
+          npm exec -- tauri signer sign -k $KEY -p "" "..\$ZIP"
           Set-Location ".."
 
           Write-Host "SIG files:"
           Get-ChildItem $BUNDLE | Select-Object Name
 
           $SIG = Get-Content "$ZIP.sig" -Raw
-
           $DATE = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
           $JSON = @{
             version = $VERSION
