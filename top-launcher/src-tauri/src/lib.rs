@@ -15,6 +15,8 @@ use winapi::um::shellapi::{SHGetFileInfoW, SHGFI_ICON, SHGFI_LARGEICON, SHFILEIN
 use winapi::um::winuser::{DestroyIcon, GetIconInfo, ICONINFO};
 use winapi::um::wingdi::{GetDIBits, GetObjectW, BITMAP, BITMAPINFOHEADER, DIB_RGB_COLORS, CreateCompatibleDC, DeleteDC, DeleteObject};
 use base64::{Engine as _, engine::general_purpose};
+use std::sync::Mutex;
+use tauri::State;
 
 #[tauri::command]
 fn resize_and_center(app: tauri::AppHandle, width: f64, height: f64) {
@@ -164,28 +166,45 @@ async fn check_update(app: tauri::AppHandle) -> Result<bool, String> {
     }
 }
 
+struct UpdateState(Mutex<Option<tauri_plugin_updater::Update>>);
+
 #[tauri::command]
-async fn get_update_info(app: tauri::AppHandle) -> Result<Option<serde_json::Value>, String> {
+async fn get_update_info(
+    app: tauri::AppHandle,
+    state: State<'_, UpdateState>
+) -> Result<Option<serde_json::Value>, String> {
     let updater = app.updater().map_err(|e| e.to_string())?;
     match updater.check().await {
-        Ok(Some(update)) => Ok(Some(serde_json::json!({
-            "version": update.version,
-            "body": update.body.unwrap_or_default(),
-        }))),
+        Ok(Some(update)) => {
+            let info = serde_json::json!({
+                "version": update.version,
+                "body": update.body.clone().unwrap_or_default(),
+                "current_version": update.current_version,
+            });
+            *state.0.lock().unwrap() = Some(update);
+            Ok(Some(info))
+        }
         Ok(None) => Ok(None),
-        Err(e) => Err(e.to_string()),
+        Err(e) => {
+            eprintln!("Updater error: {}", e);
+            Err(e.to_string())
+        }
     }
 }
 
 #[tauri::command]
-async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
-    let updater = app.updater().map_err(|e| e.to_string())?;
-    if let Ok(Some(update)) = updater.check().await {
-        update.download_and_install(|_, _| {}, || {})
-            .await
-            .map_err(|e| e.to_string())?;
-        app.restart();
-    }
+async fn install_update(
+    app: tauri::AppHandle,
+    state: State<'_, UpdateState>
+) -> Result<(), String> {
+    let update = state.0.lock().unwrap().take()
+        .ok_or("No update available")?;
+    
+    update.download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    app.restart();
     Ok(())
 }
 
@@ -215,6 +234,7 @@ fn copy_shortcut(app: tauri::AppHandle, src_path: String) -> Result<String, Stri
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .manage(UpdateState(Mutex::new(None)))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .invoke_handler(tauri::generate_handler![launch_app, get_executable_icon, resize_and_center, show_window, hide_window, check_update, get_update_info, install_update, copy_shortcut])

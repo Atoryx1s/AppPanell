@@ -60,7 +60,13 @@ jobs:
           Write-Host "SIG files:"
           Get-ChildItem $BUNDLE | Select-Object Name
 
-          $SIG = [System.IO.File]::ReadAllText("$ZIP.sig").Trim()
+          $SIG_RAW = [System.IO.File]::ReadAllText("$ZIP.sig").Trim()
+          $SIG = [System.Text.Encoding]::UTF8.GetString(
+          [System.Convert]::FromBase64String($SIG_RAW))
+
+          Write-Host "Signature to use:"
+          Write-Host $SIG
+          
           $DATE = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
           $JSON = @{
             version = $VERSION

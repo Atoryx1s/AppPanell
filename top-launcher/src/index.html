@@ -297,24 +297,27 @@ async function updateWindowSize() {
 
 async function checkForUpdates() {
     try {
-        const updateInfo = await tauri().core.invoke('get_update_info');
-        if (updateInfo) {
-            pendingUpdate = updateInfo;
+        const { check } = window.__TAURI__.updater;
+        const update = await check();
+        
+        if (update?.available) {
+            pendingUpdate = { version: update.version, body: update.body };
             const btn = document.getElementById('updateBtn');
-            btn.title = `Update to ${updateInfo.version}`;
+            btn.title = `Update to ${update.version}`;
             btn.style.display = 'flex';
             await updateWindowSize();
+            
+            window._pendingUpdateObj = update;
         }
     } catch (err) {
-        console.error('Update check error:', err);
     }
 }
 
 async function doUpdate() {
-    if (!pendingUpdate) return;
+    if (!window._pendingUpdateObj) return;
 
     const confirmed = await tauri().dialog.confirm(
-        `New version ${pendingUpdate.version} is available!\n\n${pendingUpdate.body || 'Bug fixes and improvements'}\n\nUpdate now?`,
+        `New version ${pendingUpdate.version} is available!\n\nUpdate now?`,
         { title: 'Top Launcher — Update', kind: 'info' }
     );
 
@@ -323,7 +326,12 @@ async function doUpdate() {
         btn.innerHTML = `<div class="spinner"></div>`;
         btn.onclick = null;
 
-        await tauri().core.invoke('install_update');
+        try {
+            await window._pendingUpdateObj.downloadAndInstall();
+        } catch (err) {
+            btn.innerHTML = `<span>↑</span>`;
+            btn.onclick = doUpdate;
+        }
     }
 }
 
