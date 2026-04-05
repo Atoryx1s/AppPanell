@@ -174,19 +174,25 @@ async fn get_update_info(
     state: State<'_, UpdateState>
 ) -> Result<Option<serde_json::Value>, String> {
     let updater = app.updater().map_err(|e| e.to_string())?;
+    
+    eprintln!("Checking for updates...");
+    
     match updater.check().await {
         Ok(Some(update)) => {
+            eprintln!("Update found: {} -> {}", update.current_version, update.version);
             let info = serde_json::json!({
                 "version": update.version,
                 "body": update.body.clone().unwrap_or_default(),
-                "current_version": update.current_version,
             });
             *state.0.lock().unwrap() = Some(update);
             Ok(Some(info))
         }
-        Ok(None) => Ok(None),
+        Ok(None) => {
+            eprintln!("No updates available");
+            Ok(None)
+        }
         Err(e) => {
-            eprintln!("Updater error: {}", e);
+            eprintln!("Updater error: {:#?}", e);
             Err(e.to_string())
         }
     }
@@ -197,15 +203,25 @@ async fn install_update(
     app: tauri::AppHandle,
     state: State<'_, UpdateState>
 ) -> Result<(), String> {
+    eprintln!("=== INSTALL UPDATE CALLED ===");
+    
     let update = state.0.lock().unwrap().take()
         .ok_or("No update available")?;
     
-    update.download_and_install(|_, _| {}, || {})
-        .await
-        .map_err(|e| e.to_string())?;
+    eprintln!("Starting download and install...");
+    eprintln!("Update version: {}", update.version);
     
-    app.restart();
-    Ok(())
+    match update.download_and_install(|_, _| {}, || {}).await {
+        Ok(_) => {
+            eprintln!("Install successful, restarting...");
+            app.restart();
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Install error: {:#?}", e);
+            Err(e.to_string())
+        }
+    }
 }
 
 #[tauri::command]

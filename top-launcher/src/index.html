@@ -297,24 +297,22 @@ async function updateWindowSize() {
 
 async function checkForUpdates() {
     try {
-        const { check } = window.__TAURI__.updater;
-        const update = await check();
+        const updateInfo = await tauri().core.invoke('get_update_info');
         
-        if (update?.available) {
-            pendingUpdate = { version: update.version, body: update.body };
+        if (updateInfo) {
+            pendingUpdate = updateInfo;
             const btn = document.getElementById('updateBtn');
-            btn.title = `Update to ${update.version}`;
+            btn.title = `Update to ${updateInfo.version}`;
             btn.style.display = 'flex';
             await updateWindowSize();
-            
-            window._pendingUpdateObj = update;
         }
     } catch (err) {
+        console.error('Update check error:', err);
     }
 }
 
 async function doUpdate() {
-    if (!window._pendingUpdateObj) return;
+    if (!pendingUpdate) return;
 
     const confirmed = await tauri().dialog.confirm(
         `New version ${pendingUpdate.version} is available!\n\nUpdate now?`,
@@ -327,8 +325,9 @@ async function doUpdate() {
         btn.onclick = null;
 
         try {
-            await window._pendingUpdateObj.downloadAndInstall();
+            await tauri().core.invoke('install_update');
         } catch (err) {
+            console.error('Update error:', err);
             btn.innerHTML = `<span>↑</span>`;
             btn.onclick = doUpdate;
         }

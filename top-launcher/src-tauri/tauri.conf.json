@@ -1,6 +1,6 @@
 {
   "productName": "AppPanell",
-  "version": "1.2.31",
+  "version": "1.2.32",
   "identifier": "com.top.launcher.app",
   "build": {
     "beforeDevCommand": "",
@@ -33,6 +33,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "publisher": "Atoryx",
     "copyright": "Copyright © 2026 Atoryx",
     "category": "Utility",
@@ -53,7 +54,7 @@
       "active": true,
       "dialog": true,
       "endpoints": [
-        "https://github.com/Atoryx1s/AppPanell/releases/latest/download/latest.json"
+          "https://github.com/Atoryx1s/AppPanell/releases/latest/download/latest.json?v=1"
       ],
       "pubkey": "RWQLE46PYpSximyxhGT86I15rvqz+6Q/vpnyK68SvRYbnVKwVj6iSdyc"
     }
