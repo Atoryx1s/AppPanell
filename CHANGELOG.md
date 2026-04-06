@@ -60,3 +60,6 @@ launching the application.
 * `Update Indicator`: A ↓ icon will appear in the top bar when a new version is available.
 
 * `One-Click Installation`: Added an update confirmation dialog. The program will download, verify the signature, and reinstall itself automatically.
+
+# v1.2.37
+* `Added`: real-time update checking

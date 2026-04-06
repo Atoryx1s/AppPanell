@@ -338,6 +338,13 @@ async function doUpdate() {
     }
 }
 
+function startUpdateWatcher() {
+    checkForUpdates();
+    setInterval(async () => {
+        await checkForUpdates();
+    }, 1800000); 
+}
+
 function saveApps() {
     const paths = Array.from(appsContainer.querySelectorAll('.app-icon'))
         .map(el => el.dataset.fullPath);
@@ -401,7 +408,13 @@ scrollContainer.addEventListener('mousemove', (e) => {
 });
 
 loadApps();
-setTimeout(checkForUpdates, 3000);
+window.addEventListener("DOMContentLoaded", () => {
+    startUpdateWatcher();
+    const btn = document.getElementById('updateBtn');
+    if (btn) {
+        btn.onclick = doUpdate;
+    }
+});
 </script>
 
 </body>
