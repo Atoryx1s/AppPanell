@@ -307,7 +307,6 @@ async function checkForUpdates() {
             await updateWindowSize();
         }
     } catch (err) {
-        console.error('Update check error:', err);
     }
 }
 
@@ -321,14 +320,19 @@ async function doUpdate() {
 
     if (confirmed) {
         const btn = document.getElementById('updateBtn');
+        const originalContent = btn.innerHTML;
         btn.innerHTML = `<div class="spinner"></div>`;
         btn.onclick = null;
 
         try {
             await tauri().core.invoke('install_update');
         } catch (err) {
-            console.error('Update error:', err);
-            btn.innerHTML = `<span>↑</span>`;
+           await tauri().dialog.message(`Failed to install update: ${err}`, { 
+            title: 'Update Error', 
+            kind: 'error' 
+            });
+
+            btn.innerHTML = originalContent;
             btn.onclick = doUpdate;
         }
     }

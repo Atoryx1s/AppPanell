@@ -169,59 +169,33 @@ async fn check_update(app: tauri::AppHandle) -> Result<bool, String> {
 struct UpdateState(Mutex<Option<tauri_plugin_updater::Update>>);
 
 #[tauri::command]
-async fn get_update_info(
-    app: tauri::AppHandle,
-    state: State<'_, UpdateState>
-) -> Result<Option<serde_json::Value>, String> {
+async fn get_update_info(app: tauri::AppHandle,state: State<'_, UpdateState>) -> Result<Option<serde_json::Value>, String> {
     let updater = app.updater().map_err(|e| e.to_string())?;
-    
-    eprintln!("Checking for updates...");
     
     match updater.check().await {
         Ok(Some(update)) => {
-            eprintln!("Update found: {} -> {}", update.current_version, update.version);
             let info = serde_json::json!({
                 "version": update.version,
                 "body": update.body.clone().unwrap_or_default(),
             });
             *state.0.lock().unwrap() = Some(update);
             Ok(Some(info))
-        }
-        Ok(None) => {
-            eprintln!("No updates available");
-            Ok(None)
-        }
-        Err(e) => {
-            eprintln!("Updater error: {:#?}", e);
-            Err(e.to_string())
-        }
+        },
+        Ok(None) => Ok(None),
+        Err(e) => Err(e.to_string())
     }
 }
 
 #[tauri::command]
-async fn install_update(
-    app: tauri::AppHandle,
-    state: State<'_, UpdateState>
-) -> Result<(), String> {
-    eprintln!("=== INSTALL UPDATE CALLED ===");
-    
+async fn install_update(app: tauri::AppHandle,state: State<'_, UpdateState>) -> Result<(), String> {
     let update = state.0.lock().unwrap().take()
         .ok_or("No update available")?;
     
-    eprintln!("Starting download and install...");
-    eprintln!("Update version: {}", update.version);
+    update.download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(|e| e.to_string())?;
     
-    match update.download_and_install(|_, _| {}, || {}).await {
-        Ok(_) => {
-            eprintln!("Install successful, restarting...");
-            app.restart();
-            Ok(())
-        }
-        Err(e) => {
-            eprintln!("Install error: {:#?}", e);
-            Err(e.to_string())
-        }
-    }
+    app.restart();  
 }
 
 #[tauri::command]

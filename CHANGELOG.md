@@ -43,3 +43,20 @@
 
 # v1.2.26
 - Fix UI update button
+
+# Technical Changes (v1.2.26 – v1.2.35)
+
+* `Security`: Implemented a digital signature verification system (Ed25519) for secure loading of executable files.
+
+* `Stability`: Fixed installer extraction errors and ensured proper integration with GitHub Releases.
+
+* `Optimization`: Improved version checking logic when 
+launching the application.
+
+# v1.2.36 — April 6, 2026
+* `New`: Automatic Updates
+* `Update System`: Full support for remote updates has been added. You no longer need to manually download new versions from GitHub.
+
+* `Update Indicator`: A ↓ icon will appear in the top bar when a new version is available.
+
+* `One-Click Installation`: Added an update confirmation dialog. The program will download, verify the signature, and reinstall itself automatically.
