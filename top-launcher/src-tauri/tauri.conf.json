@@ -1,6 +1,6 @@
 {
   "productName": "AppPanell",
-  "version": "1.2.37",
+  "version": "1.2.38",
   "identifier": "com.top.launcher.app",
   "build": {
     "beforeDevCommand": "",
@@ -34,8 +34,8 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": true,
-    "publisher": "Atoryx",
-    "copyright": "Copyright © 2026 Atoryx",
+    "publisher": "Atoryxic Labs",
+    "copyright": "Copyright © 2026 Atoryxic Labs",
     "category": "Utility",
     "icon": [
       "icons/32x32.png",

@@ -63,3 +63,9 @@ launching the application.
 
 # v1.2.37
 * `Added`: real-time update checking
+
+# v1.2.38 — April 7, 2026
+
+* `Changed`: Transferred project ownership to [Atoryxic Labs].
+
+* `Updated`: License file and contact information in README.md.
