@@ -10,7 +10,11 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -22,12 +26,19 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
       - name: Install dependencies
         run: npm install
         working-directory: top-launcher
 
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
+        id: build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -41,3 +52,92 @@ jobs:
           prerelease: false
           updaterJsonPreferNsis: true
           includeUpdaterJson: true
+
+      - name: Prepare updater files
+        id: prepare
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            echo "PLATFORM=windows-x86_64" >> $GITHUB_OUTPUT
+            echo "SIG_FILE=$(find top-launcher/src-tauri/target/release/bundle/nsis -name '*.sig' | head -n1)" >> $GITHUB_OUTPUT
+            echo "UPDATER_FILE=AppPanell_${{ github.ref_name }}_x64-setup.nsis.zip" >> $GITHUB_OUTPUT
+          else
+            echo "PLATFORM=linux-x86_64" >> $GITHUB_OUTPUT
+            echo "SIG_FILE=$(find top-launcher/src-tauri/target/release/bundle/appimage -name '*.AppImage.sig' | head -n1)" >> $GITHUB_OUTPUT
+            echo "UPDATER_FILE=AppPanell_${{ github.ref_name }}_amd64.AppImage.tar.gz" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
+      - name: Upload signature as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: signatures-${{ matrix.os }}
+          path: ${{ steps.prepare.outputs.SIG_FILE }}
+          if-no-files-found: error
+
+  generate-updater-json:
+    needs: release
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all signatures
+        uses: actions/download-artifact@v4
+        with:
+          path: ./signatures
+          merge-multiple: true
+
+      - name: Generate latest.json
+        shell: bash
+        run: |
+          WIN_SIG_PATH=$(find ./signatures -name "*.exe.sig" -o -name "*.nsis.zip.sig" | head -n 1)
+          
+          LINUX_SIG_PATH=$(find ./signatures -name "*.AppImage.sig" | head -n 1)
+
+          echo "Found Windows sig: $WIN_SIG_PATH"
+          echo "Found Linux sig: $LINUX_SIG_PATH"
+
+          if [ -z "$WIN_SIG_PATH" ] || [ -z "$LINUX_SIG_PATH" ]; then
+            echo "Error: Could not find signature files by extension!"
+            ls -R ./signatures
+            exit 1
+          fi
+
+          WIN_SIG=$(tail -n 1 "$WIN_SIG_PATH" | tr -d '\n\r')
+          LINUX_SIG=$(tail -n 1 "$LINUX_SIG_PATH" | tr -d '\n\r')
+
+          VERSION_CLEAN=${GITHUB_REF_NAME#v}
+
+          cat > latest.json << EOF
+          {
+            "version": "${{ github.ref_name }}",
+            "notes": "See changelog for details",
+            "pub_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "platforms": {
+              "windows-x86_64": {
+                "url": "https://github.com/Atoryx1s/AppPanell/releases/download/${{ github.ref_name }}/AppPanell_${VERSION_CLEAN}_x64-setup.nsis.zip",
+                "signature": "$WIN_SIG"
+              },
+              "linux-x86_64": {
+                "url": "https://github.com/Atoryx1s/AppPanell/releases/download/${{ github.ref_name }}/AppPanell_${VERSION_CLEAN}_amd64.AppImage.tar.gz",
+                "signature": "$LINUX_SIG"
+              }
+            }
+          }
+          EOF
+          
+          echo "Final latest.json content:"
+          cat latest.json
+
+      - name: Upload latest.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-json
+          path: latest.json
+
+      - name: Upload latest.json to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: latest.json

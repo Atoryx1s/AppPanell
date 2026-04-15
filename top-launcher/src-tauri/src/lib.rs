@@ -1,22 +1,35 @@
 use tauri::{
-    Manager,
-    tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState},
+    Manager, tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState},
     menu::{Menu, MenuItem},
 };
 use std::process::Command;
-use std::os::windows::process::CommandExt;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use tauri_plugin_updater::UpdaterExt;
 
-use std::ffi::OsStr;
-use std::os::windows::ffi::OsStrExt;
-use std::ptr;
-use winapi::um::shellapi::{SHGetFileInfoW, SHGFI_ICON, SHGFI_LARGEICON, SHFILEINFOW};
-use winapi::um::winuser::{DestroyIcon, GetIconInfo, ICONINFO};
-use winapi::um::wingdi::{GetDIBits, GetObjectW, BITMAP, BITMAPINFOHEADER, DIB_RGB_COLORS, CreateCompatibleDC, DeleteDC, DeleteObject};
-use base64::{Engine as _, engine::general_purpose};
 use std::sync::Mutex;
 use tauri::State;
+use base64::{Engine as _, engine::general_purpose};
+use std::path::Path;
+
+#[cfg(target_os = "windows")]
+use std::ffi::OsStr;
+#[cfg(target_os = "windows")]
+use std::os::windows::ffi::OsStrExt;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+use windows::{
+    core::PCWSTR,
+    Win32::{
+        Graphics::Gdi::*,
+        UI::{
+            Shell::{SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON},
+            WindowsAndMessaging::*,
+        },
+        Storage::FileSystem::FILE_FLAGS_AND_ATTRIBUTES,
+    },
+};
 
 #[tauri::command]
 fn resize_and_center(app: tauri::AppHandle, width: f64, height: f64) {
@@ -34,98 +47,136 @@ fn resize_and_center(app: tauri::AppHandle, width: f64, height: f64) {
 
 #[tauri::command]
 fn get_executable_icon(path: String) -> Result<String, String> {
-    let path_wide: Vec<u16> = OsStr::new(&path)
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect();
-    
-    let mut shfi: SHFILEINFOW = unsafe { std::mem::zeroed() };
+    #[cfg(target_os = "windows")]
+    {
+        let path_wide: Vec<u16> = OsStr::new(&path)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
 
-    let h_success = unsafe {
-        SHGetFileInfoW(
-            path_wide.as_ptr(),
-            0,
-            &mut shfi,
-            std::mem::size_of::<SHFILEINFOW>() as u32,
-            SHGFI_ICON | SHGFI_LARGEICON,
-        )
-    };
+        let mut shfi = SHFILEINFOW::default();
 
-    if h_success == 0 || shfi.hIcon.is_null() {
-        return Err("The icon could not be found".to_string());
-    }
-
-    let h_icon = shfi.hIcon;
-
-    let (width, height, rgba_buf) = unsafe {
-        let mut icon_info: ICONINFO = std::mem::zeroed();
-        if GetIconInfo(h_icon, &mut icon_info) == 0 {
-            DestroyIcon(h_icon);
-            return Err("GetIconInfo failed".to_string());
-        }
-
-        let h_bitmap = icon_info.hbmColor;
-        let mut bitmap: BITMAP = std::mem::zeroed();
-        GetObjectW(
-            h_bitmap as *mut _,
-            std::mem::size_of::<BITMAP>() as i32,
-            &mut bitmap as *mut _ as *mut _,
-        );
-
-        let width = bitmap.bmWidth;
-        let height = bitmap.bmHeight;
-
-        let mut bi = BITMAPINFOHEADER {
-            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
-            biWidth: width,
-            biHeight: -height,
-            biPlanes: 1,
-            biBitCount: 32,
-            biCompression: 0,
-            biSizeImage: 0,
-            biXPelsPerMeter: 0,
-            biYPelsPerMeter: 0,
-            biClrUsed: 0,
-            biClrImportant: 0,
+        let result = unsafe {
+            SHGetFileInfoW(
+                PCWSTR(path_wide.as_ptr()),
+                FILE_FLAGS_AND_ATTRIBUTES(0),
+                Some(&mut shfi),                                      // ← Головне виправлення
+                std::mem::size_of::<SHFILEINFOW>() as u32,
+                SHGFI_ICON | SHGFI_LARGEICON,
+            )
         };
 
-        let hdc = CreateCompatibleDC(ptr::null_mut());
-        let buf_size = (width * height * 4) as usize;
-        let mut buf: Vec<u8> = vec![0u8; buf_size];
-
-        GetDIBits(
-            hdc,
-            h_bitmap,
-            0,
-            height as u32,
-            buf.as_mut_ptr() as *mut _,
-            &mut bi as *mut _ as *mut _,
-            DIB_RGB_COLORS,
-        );
-
-        DeleteDC(hdc);
-        DeleteObject(h_bitmap as *mut _);
-        DeleteObject(icon_info.hbmMask as *mut _);
-        DestroyIcon(h_icon);
-
-        for chunk in buf.chunks_exact_mut(4) {
-            chunk.swap(0, 2);
+        if result == 0 || shfi.hIcon.is_invalid() {
+            return Err("Could not extract icon".to_string());
         }
 
-        (width as u32, height as u32, buf)
-    };
+        let h_icon = shfi.hIcon;
 
-    let img = image::RgbaImage::from_raw(width, height, rgba_buf)
-        .ok_or("Failed to create RgbaImage")?;
+        let (width, height, rgba_buf) = unsafe {
+            let mut icon_info = ICONINFO::default();
+            if GetIconInfo(h_icon, &mut icon_info).is_err() {
+                let _ = DestroyIcon(h_icon);
+                return Err("GetIconInfo failed".to_string());
+            }
 
-    let mut png_bytes: Vec<u8> = Vec::new();
-    img.write_to(
-        &mut std::io::Cursor::new(&mut png_bytes),
-        image::ImageFormat::Png,
-    ).map_err(|e| e.to_string())?;
+            let h_bitmap = icon_info.hbmColor;
+            let mut bitmap = BITMAP::default();
 
-    let base64_string = general_purpose::STANDARD.encode(&png_bytes);
-    Ok(format!("data:image/png;base64,{}", base64_string))
+            let _ = GetObjectW(
+                h_bitmap.into(),
+                std::mem::size_of::<BITMAP>() as i32,
+                Some(&mut bitmap as *mut _ as *mut _),
+            );
+
+            let width = bitmap.bmWidth;
+            let height = bitmap.bmHeight;
+
+            let bi = BITMAPINFOHEADER {
+                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                biWidth: width,
+                biHeight: -height,
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: BI_RGB.0 as u32,
+                ..Default::default()
+            };
+
+            let hdc = CreateCompatibleDC(None);
+            let buf_size = (width * height * 4) as usize;
+            let mut buf = vec![0u8; buf_size];
+
+            let mut bmi = BITMAPINFO {
+                bmiHeader: bi,
+                bmiColors: [RGBQUAD::default(); 1],
+            };
+
+            let _ = GetDIBits(
+                hdc,
+                h_bitmap,
+                0,
+                height as u32,
+                Some(buf.as_mut_ptr() as *mut _),
+                &mut bmi,
+                DIB_RGB_COLORS,
+            );
+
+            let _ = DeleteDC(hdc);
+            let _ = DeleteObject(h_bitmap.into());
+            let _ = DeleteObject(icon_info.hbmMask.into());
+            let _ = DestroyIcon(h_icon);
+
+            for chunk in buf.chunks_exact_mut(4) {
+                chunk.swap(0, 2);
+            }
+
+            (width as u32, height as u32, buf)
+        };
+
+        let img = image::RgbaImage::from_raw(width, height, rgba_buf)
+            .ok_or("Failed to create image from raw data")?;
+
+        let mut png_bytes = Vec::new();
+        img.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageFormat::Png)
+            .map_err(|e| e.to_string())?;
+
+        let base64_string = general_purpose::STANDARD.encode(&png_bytes);
+        Ok(format!("data:image/png;base64,{}", base64_string))
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if path.ends_with(".desktop") {
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                for line in content.lines() {
+                    if let Some(icon_name) = line.strip_prefix("Icon=") {
+                        let icon_name = icon_name.trim();
+
+                        let possible_paths = [
+                            format!("/usr/share/icons/hicolor/256x256/apps/{}.png", icon_name),
+                            format!("/usr/share/icons/hicolor/48x48/apps/{}.png", icon_name),
+                            format!("/usr/share/pixmaps/{}.png", icon_name),
+                            format!("{}/.local/share/icons/{}.png", std::env::var("HOME").unwrap_or_default(), icon_name),
+                        ];
+
+                        for p in possible_paths {
+                            if Path::new(&p).exists() {
+                                if let Ok(bytes) = std::fs::read(&p) {
+                                    let base64 = general_purpose::STANDARD.encode(&bytes);
+                                    return Ok(format!("data:image/png;base64,{}", base64));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Err("Icon not found on Linux".to_string())
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    {
+        Err("Platform not supported".to_string())
+    }
 }
 
 #[tauri::command]
@@ -137,11 +188,24 @@ fn show_window(app: tauri::AppHandle) {
 
 #[tauri::command]
 fn launch_app(path: String) -> Result<(), String> {
-    Command::new("cmd")
-        .args(["/C", "start", "", &path])
-        .creation_flags(0x08000000)
-        .spawn()
-        .map_err(|e| e.to_string())?;
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .creation_flags(0x08000000)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if path.ends_with(".desktop") {
+            let _ = Command::new("gtk-launch").arg(&path).spawn();
+        } else {
+            let _ = Command::new(&path).spawn();
+        }
+    }
+
     Ok(())
 }
 

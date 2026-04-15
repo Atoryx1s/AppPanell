@@ -69,3 +69,10 @@ launching the application.
 * `Changed`: Transferred project ownership to [Atoryxic Labs].
 
 * `Updated`: License file and contact information in README.md.
+
+# v.1.2.39 — April 15, 2026
+
+- Added Linux (x86_64) platform support
+- Linux builds are provided as portable AppImage
+- Cross-platform updater support (Windows + Linux)
+- Updated release infrastructure to generate unified `latest.json`

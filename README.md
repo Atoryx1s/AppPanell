@@ -10,7 +10,15 @@ A stylish hidden panel for Windows with an Acrylic/Glass design.
 - Quick launch of any .exe, .md, .lnk  files.
 ![ShowPanell](Assets/showPanell.png)
 
+
+
 ## How to Install
-1. Go to the [Releases](https://github.com/Atoryx1s/AppPanell/releases/latest).
-2. Download the `AppPanell_1.2.38_x64_en-US.msi` or `AppPanell_1.2.38_x64-setup.exe` file.
-3. Install and run it.
+
+Go to the [latest release](https://github.com/Atoryx1s/AppPanell/releases/latest) and download the file for your operating system:
+
+|   Platform  |            File to download               |      How to run        |
+|-------------|-------------------------------------------|------------------------|
+| **Windows** | `AppPanell_*_x64-setup.exe` or `.msi`     | Just run the installer |
+| **Linux**   | `AppPanell_*_amd64.AppImage.tar.gz`       | Extract → `chmod +x *.AppImage` → run |
+
+> **Tip for Linux**: AppImage does not require installation — you can run it directly.

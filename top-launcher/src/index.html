@@ -213,10 +213,16 @@ function tauri() {
 async function addAppManual() {
     try {
         dialogOpen = true;
+        
+        const isLinux = navigator.userAgent.toLowerCase().includes('linux');
+        const filters = isLinux 
+            ? [{ name: 'Applications', extensions: ['desktop', 'AppImage', ''] }]
+            : [{ name: 'Programs', extensions: ['exe', 'lnk', 'md'] }];
+        
         const selected = await tauri().dialog.open({
             multiple: true,
-            title: "Select the program (.exe, .lnk or shortcut)",
-            filters: [{ name: 'Програми', extensions: ['exe', 'lnk', 'md'] }]
+            title: "Select application",
+            filters
         });
 
         if (selected) {
