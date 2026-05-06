@@ -31,6 +31,8 @@ use windows::{
     },
 };
 
+use tauri_plugin_single_instance::init as single_instance;
+
 #[tauri::command]
 fn resize_and_center(app: tauri::AppHandle, width: f64, height: f64) {
     let window = app.get_webview_window("main").unwrap();
@@ -287,6 +289,12 @@ fn copy_shortcut(app: tauri::AppHandle, src_path: String) -> Result<String, Stri
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                window.show().unwrap();
+                window.set_focus().unwrap();
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .manage(UpdateState(Mutex::new(None)))
         .plugin(tauri_plugin_updater::Builder::new().build())

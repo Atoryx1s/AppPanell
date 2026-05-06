@@ -76,3 +76,7 @@ launching the application.
 - Linux builds are provided as portable AppImage
 - Cross-platform updater support (Windows + Linux)
 - Updated release infrastructure to generate unified `latest.json`
+
+# v1.2.40 - May 6, 2026
+
+- Fix bug single instance
